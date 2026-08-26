@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load static %} 
+
+{% block title %}Dermio{% endblock %}
+
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <title>Patient Portal - Dermio</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-primary px-4 py-3 shadow-sm">
+        <a class="navbar-brand fw-bold fs-4" href="#">Dermio Patient Portal</a>
+        <div class="d-flex align-items-center">
+            <span class="text-white me-3"><i class="fa fa-user-circle me-1"></i> Welcome, {{ patient.user.first_name }}</span>
+            <a href="{% url 'logout_view' %}" class="btn btn-outline-light btn-sm">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="row g-4">
+            
+            <div class="col-md-5">
+                <div class="card p-4 shadow-sm mb-4">
+                    <h4 class="text-secondary fw-bold mb-3">Evaluate Skin Lesion</h4>
+                    <p class="text-muted small">Upload a clear, well-lit close-up image of the affected area for AI analysis.</p>
+                    
+                    <form method="POST" action="{% url 'predict_skin' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <input type="file" name="image" class="form-control" accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2"><i class="fa fa-upload me-2"></i>Analyze Lesion</button>
+                    </form>
+                </div>
+
+                {% if error %}
+                <div class="alert alert-danger shadow-sm text-center mb-4" role="alert">
+                    <strong>Engine Error:</strong> {{ error }}
+                </div>
+                {% endif %}
+
+                {% if disease_name or history %}
+                <div class="card p-4 shadow-sm border-start border-primary border-4">
+                    <h5 class="text-primary fw-bold mb-3"><i class="fa fa-poll-h me-2"></i>Latest Diagnosis Analysis</h5>
+                    <div class="text-center mb-3">
+                        <img src="{% if image_url %}{{ image_url }}{% else %}{{ history.0.uploaded_image.url }}{% endif %}" class="img-thumbnail rounded" style="max-height: 180px;">
+                    </div>
+                    <table class="table table-sm table-borderless small">
+                        <tr>
+                            <td><strong>Prediction:</strong></td>
+                            <td class="text-danger fw-bold">
+                                {% if disease_name %}{{ disease_name }}{% else %}{{ history.0.predicted_disease }}{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Confidence Score:</strong></td>
+                            <td>
+                                {% if confidence %}{{ confidence }}%{% else %}{{ history.0.confidence_score }}%{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Recommendation:</strong></td>
+                            <td class="text-muted">
+                                {% if disease_name %}
+                                    Schedule an immediate consultation with a certified Dermatologist for definitive verification.
+                                {% else %}
+                                    {{ history.0.specialist_recommendation }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-7">
+                <div class="card p-4 shadow-sm min-vh-50">
+                    <h4 class="text-secondary fw-bold mb-3">Your Prediction History</h4>
+                    
+                    {% if history %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Image</th>
+                                        <th>Date</th>
+                                        <th>Detected Condition</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in history %}
+                                    <tr>
+                                        <td><img src="{{ item.uploaded_image.url }}" class="rounded shadow-sm" style="width: 45px; height: 45px; object-fit: cover;"></td>
+                                        <td>{{ item.prediction_date|date:"M d, Y" }}</td>
+                                        <td><span class="badge bg-danger-subtle text-danger px-2 py-1">{{ item.predicted_disease }}</span></td>
+                                        <td>{{ item.confidence_score }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fa fa-images fa-3x mb-3 text-black-50"></i>
+                            <p>No scans analyzed yet. Use the tool on the left to complete your first evaluation.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
+{% endblock %}

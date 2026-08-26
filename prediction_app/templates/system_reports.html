@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dermio Core - System Metrics Report</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
+        <span class="navbar-brand mb-0 h1 fw-bold" style="color: #bc7ff7 !important;"><i class="fa fa-chart-bar me-2"></i>System Report Summary</span>
+        <div class="ms-auto">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-light px-3"><i class="fa fa-arrow-left me-1"></i> Hub Terminal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5 d-flex justify-content-center">
+        <div class="card border-0 shadow-sm p-5 bg-white rounded" style="max-width: 600px; width: 100%; border-top: 4px solid #6f42c1 !important;">
+            
+            <div class="text-center mb-4">
+                <div class="d-inline-block rounded-circle p-3 mb-2" style="background: rgba(111, 66, 193, 0.1); color: #6f42c1;">
+                    <i class="fa fa-file-alt fa-2x"></i>
+                </div>
+                <h3 class="fw-bold text-dark m-0">Platform Aggregation Report</h3>
+                <p class="text-muted small text-uppercase tracking-wider mt-1">Live Database State</p>
+            </div>
+
+            <hr style="border-color: #e6e8eb; margin-bottom: 25px;">
+
+            <div style="font-size: 16px; color: #333;">
+                <div class="d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px dashed #e6e8eb;">
+                    <span class="text-secondary fw-medium"><i class="fa fa-user-md me-2 text-primary" style="width: 20px;"></i>Total Number of Doctors:</span>
+                    <span class="fw-bold text-dark fs-5">{{ total_doctors }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px dashed #e6e8eb;">
+                    <span class="text-secondary fw-medium"><i class="fa fa-users me-2 text-success" style="width: 20px;"></i>Total Number of Patients:</span>
+                    <span class="fw-bold text-dark fs-5">{{ total_patients }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px dashed #e6e8eb;">
+                    <span class="text-secondary fw-medium"><i class="fa fa-qrcode me-2 text-warning" style="width: 20px;"></i>Total AI Image Scans Run:</span>
+                    <span class="fw-bold text-dark fs-5">{{ total_scans }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px dashed #e6e8eb;">
+                    <span class="text-secondary fw-medium"><i class="fa fa-user-shield me-2 text-danger" style="width: 20px;"></i>Total Administrative Profiles:</span>
+                    <span class="fw-bold text-dark fs-5">{{ total_admins }}</span>
+                </div>
+            </div>
+
+            <div class="mt-5 p-3 rounded text-center bg-light" style="font-size: 12px; color: #6c757d;">
+                <i class="fa fa-clock me-1"></i> Data logs generated dynamically on query compilation.
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dermio Core - Live Predictions Pipeline</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
+        <span class="navbar-brand mb-0 h1 fw-bold text-info"><i class="fa fa-brain me-2"></i>Predictions Operations Center</span>
+        <div class="ms-auto">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-light px-3"><i class="fa fa-arrow-left me-1"></i> Hub Terminal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <h2 class="mb-4 text-dark fw-bold">Live Inference Telemetry</h2>
+
+        <div class="card border-0 shadow-sm rounded bg-white">
+            <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+                <h5 class="fw-bold text-dark m-0">Active Neural Network Logs</h5>
+                <span class="badge bg-info text-white px-3 py-1.5 rounded-pill">Model: ResNet-50 v2</span>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary small text-uppercase">
+                            <tr>
+                                <th>Scan ID</th>
+                                <th>Subject Profile</th>
+                                <th>Timestamp</th>
+                                <th>Inferred Condition</th>
+                                <th>Confidence Matrix</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small text-dark">
+                            {% for scan in recent_scans %}
+                            <tr>
+                                <td class="fw-bold text-info">#{{ scan.id }}</td>
+                                <td>{{ scan.patient.user.get_full_name|default:scan.patient.user.username }}</td>
+                                <td class="text-muted">{{ scan.prediction_date|date:"M d, Y - H:i" }}</td>
+                                <td><span class="badge bg-danger text-white fw-bold px-2 py-1">{{ scan.predicted_disease }}</span></td>
+                                <td class="fw-bold">{{ scan.confidence_score }}%</td>
+                                <td class="text-center">
+                                    <a href="#" class="btn btn-sm btn-outline-info py-0 px-2 fw-bold" style="font-size: 11px;">Inspect Map</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No diagnostic metrics currently parsing through system filters.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

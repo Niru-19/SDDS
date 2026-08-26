@@ -1,0 +1,229 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dermio Portal{% endblock %}</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Sidebar layout rules that float over any page structure cleanly */
+        .copilot-sidebar {
+            position: fixed;
+            top: 0;
+            right: -420px; /* Hidden off-screen by default */
+            width: 400px;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.25);
+            z-index: 1050; /* Sits comfortably above navigation elements */
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .copilot-sidebar.open {
+            right: 0;
+        }
+        .chat-stream-panel {
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .msg-bubble-element {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            word-wrap: break-word;
+        }
+        .bot-style {
+            background-color: #e9ecef;
+            color: #212529;
+            border-bottom-left-radius: 2px;
+            align-self: flex-start;
+        }
+        .user-style {
+            background-color: #06A3DA;
+            color: #ffffff;
+            border-bottom-right-radius: 2px;
+            align-self: flex-end;
+        }
+        /* Floating Logo Badge Trigger styling */
+        .copilot-trigger-badge {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            background-color: #06A3DA;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(6, 163, 218, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1040;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            color: white;
+            font-size: 1.3rem;
+        }
+        .copilot-trigger-badge:hover {
+            transform: scale(1.05);
+            background-color: #008bbb;
+        }
+    </style>
+</head>
+<body style="background-color: #051225; min-height: 100vh; margin: 0;">
+
+    <div id="pageContentMainWrapper" style="transition: margin-right 0.3s ease;">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <div class="copilot-trigger-badge" id="copilotBadgeTrigger">
+        <i class="fas fa-heartbeat"></i>
+    </div>
+
+    <div class="copilot-sidebar" id="copilotSidebarPanel">
+        <div class="bg-primary text-white p-3 d-flex align-items-center justify-content-between" style="box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-heartbeat fa-lg me-2"></i>
+                <div>
+                    <h6 class="m-0 fw-bold">Dermio MindCare</h6>
+                    <small style="opacity: 0.85; font-size: 11px;">Compassionate Support Assistant</small>
+                </div>
+            </div>
+            <button class="btn btn-sm text-white p-1 style-none" id="closeCopilotPanelBtn" style="font-size: 1.1rem; background: none; border: none;">✕</button>
+        </div>
+
+        <div class="chat-stream-panel" id="copilotChatStream">
+            <div class="msg-bubble-element bot-style shadow-sm">
+                Hello! I am your companion for mental wellness. Feel free to talk about stress, anxiety, or anything on your mind. How are you doing today?
+            </div>
+            
+            {% for chat in chat_history %}
+                {% if chat.sender == 'user' %}
+                    <div class="msg-bubble-element user-style shadow-sm">
+                        {{ chat.message }}
+                    </div>
+                {% else %}
+                    <div class="msg-bubble-element bot-style shadow-sm">
+                        {{ chat.message|linebreaksbr }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="p-3 bg-white border-top">
+            <div class="input-group">
+                <input type="text" id="copilotMessageInput" class="form-control py-2" placeholder="Share what's on your mind..." onkeypress="handleCopilotKeyPress(event)">
+                <button class="btn btn-primary px-3" type="button" onclick="dispatchCopilotMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const panel = document.getElementById("copilotSidebarPanel");
+        const trigger = document.getElementById("copilotBadgeTrigger");
+        const closeBtn = document.getElementById("closeCopilotPanelBtn");
+        const stream = document.getElementById("copilotChatStream");
+        const messageInput = document.getElementById("copilotMessageInput");
+
+        function autoScrollStreamToBottom() {
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        // Toggle sliding animations cleanly without resetting task inputs
+        trigger.addEventListener('click', () => {
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) {
+                autoScrollStreamToBottom();
+            }
+        });
+
+        closeBtn.addEventListener('click', () => {
+            panel.classList.remove('open');
+        });
+
+        function dispatchCopilotMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            // Render User bubble immediately
+            stream.innerHTML += `
+                <div class="msg-bubble-element user-style shadow-sm">
+                    ${text}
+                </div>
+            `;
+            
+            messageInput.value = "";
+            autoScrollStreamToBottom();
+
+            // Render "Thinking..." placeholder bubble
+            const loadingUniqueId = "loading_" + Date.now();
+            stream.innerHTML += `
+                <div class="msg-bubble-element bot-style shadow-sm" id="${loadingUniqueId}" style="font-style: italic; color: #6c757d;">
+                    <i class="fas fa-spinner fa-spin me-1"></i> Formulating guidance insights...
+                </div>
+            `;
+            autoScrollStreamToBottom();
+
+            // Fire async pipeline transmission down to your LangChain RAG backend endpoint
+            fetch('/api/mental-health-chat/', {  // <-- Ensure this targets your precise URL routing key string
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const loaderNode = document.getElementById(loadingUniqueId);
+                if (loaderNode) loaderNode.remove();
+
+                if (data.reply) {
+                    stream.innerHTML += `
+                        <div class="msg-bubble-element bot-style shadow-sm">
+                            ${data.reply.replace(/\n/g, '<br>')}
+                        </div>
+                    `;
+                } else {
+                    stream.innerHTML += `
+                        <div class="msg-bubble-element alert alert-danger p-2 small border">
+                            ⚠️ ${data.error || "Processing failed."}
+                        </div>
+                    `;
+                }
+                autoScrollStreamToBottom();
+            })
+            .catch(err => {
+                console.error(err);
+                const loaderNode = document.getElementById(loadingUniqueId);
+                if (loaderNode) loaderNode.remove();
+                
+                stream.innerHTML += `
+                    <div class="msg-bubble-element alert alert-danger p-2 small border">
+                        ⚠️ Error communicating with support core engine.
+                    </div>
+                `;
+                autoScrollStreamToBottom();
+            });
+        }
+
+        function handleCopilotKeyPress(e) {
+            if (e.key === 'Enter') dispatchCopilotMessage();
+        }
+
+        // Auto scroll compiled backend histories on window initialization loads
+        window.addEventListener('DOMContentLoaded', autoScrollStreamToBottom);
+    </script>
+</body>
+</html>

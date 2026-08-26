@@ -1,0 +1,74 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dermio Core - Manage Patients</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fa fa-users text-success me-2"></i>Registered Patients</h2>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary btn-sm"><i class="fa fa-home me-1"></i>Admin Hub</a>
+        </div>
+
+        {% if messages %}
+            {% for msg in messages %}<div class="alert alert-success py-2">{{ msg }}</div>{% endfor %}
+        {% endif %}
+
+        <div class="card border-0 shadow-sm rounded p-4 bg-white">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="table-light text-secondary text-uppercase small">
+                        <tr>
+                            <th>Username ID</th>
+                            <th>Full Name</th>
+                            <th>Gender</th>
+                            <th>Age</th>
+                            <th>Contact</th>
+                            <th class="text-center">Database Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pat in patients %}
+                        <tr>
+                            <td class="fw-bold text-success">{{ pat.user.username }}</td>
+                            <td>{{ pat.user.get_full_name|default:pat.user.username }}</td>
+                            <td>{{ pat.get_gender_display }}</td>
+                            <td>{{ pat.age }}</td>
+                            <td>{{ pat.contact }}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-warning me-1" data-bs-toggle="modal" data-bs-target="#editPat{{ pat.id }}"><i class="fa fa-edit"></i></button>
+                                <a href="{% url 'admin_delete_patient' pat.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Wipe out this profile record?')"><i class="fa fa-trash"></i></a>
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="editPat{{ pat.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <form method="POST" action="{% url 'admin_update_patient' pat.id %}" class="modal-content">
+                                    {% csrf_token %}
+                                    <div class="modal-header"><h5 class="modal-title">Modify Case Profile</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                    <div class="modal-body">
+                                        <div class="mb-3"><label class="form-label small fw-bold">First Name</label><input type="text" name="first_name" class="form-control" value="{{ pat.user.first_name }}"></div>
+                                        <div class="mb-3"><label class="form-label small fw-bold">Last Name</label><input type="text" name="last_name" class="form-control" value="{{ pat.user.last_name }}"></div>
+                                        <div class="mb-3"><label class="form-label small fw-bold">Age</label><input type="number" name="age" class="form-control" value="{{ pat.age }}"></div>
+                                        <div class="mb-3"><label class="form-label small fw-bold">Contact</label><input type="text" name="contact" class="form-control" value="{{ pat.contact }}"></div>
+                                        <div class="mb-3"><label class="form-label small fw-bold">Address</label><textarea name="address" class="form-control" rows="3">{{ pat.address }}</textarea></div>
+                                    </div>
+                                    <div class="modal-footer"><button type="submit" class="btn btn-success btn-sm">Save Changes</button></div>
+                                </form>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">No patients registered in the database system.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dermio - Patient Registration</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+</head>
+<body class="bg-light py-5">
+    <div class="container d-flex justify-content-center">
+        <div class="card p-4 shadow-sm" style="max-width: 550px; width: 100%;">
+            <div class="text-center mb-4">
+                <h3 class="text-primary fw-bold">Patient Registration</h3>
+                <p class="text-muted small">Create an account to track and evaluate skin concerns</p>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                    <div class="alert alert-danger py-2 small">
+                        Please correct the errors down below.
+                    </div>
+                {% endif %}
+
+                <div class="row g-3">
+                    {% for field in form %}
+                        <div class="col-{% if field.name == 'address' or field.name == 'email' %}12{% else %}6{% endif %}">
+                            <label class="form-label text-secondary small fw-bold mb-1">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger small mt-1" style="font-size: 11px;">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2 mt-4 mb-3">Register Account</button>
+            </form>
+
+            <div class="text-center small border-top pt-3">
+                <span class="text-muted">Already have an account? </span>
+                <a href="{% url 'login_view' %}" class="fw-bold">Login here</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

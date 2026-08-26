@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: skin-disease-detection
+    env: python
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "gunicorn skin_disease_project.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

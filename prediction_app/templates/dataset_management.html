@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %} 
+
+{% block title %}Dermio{% endblock %}
+
+{% block content %}>
+<head>
+    <meta charset="UTF-8">
+    <title>Dermio Core - DataSet Repository</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
+        <span class="navbar-brand mb-0 h1 fw-bold text-warning"><i class="fa fa-folder-open me-2"></i>DataSet Command Console</span>
+        <div class="ms-auto">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-light px-3"><i class="fa fa-arrow-left me-1"></i> Hub Terminal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-dark fw-bold m-0">Training Clusters & Repositories</h2>
+            <span class="badge bg-warning text-dark px-3 py-2 fw-bold rounded-pill">Active Array Feed</span>
+        </div>
+
+        <div class="card border-0 shadow-sm p-4 mb-4 bg-white rounded">
+            <h5 class="fw-bold text-dark mb-3">Upload Lesion Micro-Imaging Arrays</h5>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="p-5 text-center mb-3" style="border: 2px dashed #fd7e14; border-radius: 6px; background-color: #fafbfc;">
+                    <i class="fa fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <h6 class="fw-bold text-secondary">Drag image directories here or select local path</h6>
+                    <p class="text-muted small mb-3">Accepted formats: .jpg, .png, .jpeg (Compressed Batch ZIP files optimal)</p>
+                    <input type="file" name="dataset_batch" class="form-control w-50 mx-auto" required>
+                </div>
+                <button type="submit" class="btn text-white fw-bold px-4" style="background-color: #fd7e14;">Append Cluster to Database</button>
+            </form>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded bg-white">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h5 class="fw-bold text-dark m-0">Isolated Database Label Tensors</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary small text-uppercase">
+                            <tr>
+                                <th>Cluster Label Key</th>
+                                <th>Source Path Directory</th>
+                                <th>Sample Weight</th>
+                                <th>Status Matrix</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small text-dark">
+                            <tr>
+                                <td class="fw-bold text-warning">#MEL_01_NV</td>
+                                <td><code>/static/dataset/train/melanoma/</code></td>
+                                <td>3,420 Items</td>
+                                <td><span class="badge bg-success">Verified Vector</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-warning">#BCC_02_MCD</td>
+                                <td><code>/static/dataset/train/basal_cell/</code></td>
+                                <td>2,911 Items</td>
+                                <td><span class="badge bg-success">Verified Vector</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-warning">#BKL_03_SQ</td>
+                                <td><code>/static/dataset/train/benign_keratosis/</code></td>
+                                <td>4,105 Items</td>
+                                <td><span class="badge bg-secondary">Standing By</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{% endblock %}
