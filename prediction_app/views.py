@@ -67,17 +67,23 @@ DISEASE_LOOKUP = {
 
 # Torch Model Setup
 # Torch Model Setup
+# Model Path
 MODEL_FILE_PATH_TORCH = os.path.join(os.path.dirname(__file__), "skin_cancer_cnn.pth")
 
-def get_torch_device():
+def load_torch_model():
     import torch
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-torch_model = SkinCancerCNN(num_classes=9)
-if os.path.exists(MODEL_FILE_PATH_TORCH):
-    torch_model.load_state_dict(torch.load(MODEL_FILE_PATH_TORCH, map_location=DEVICE))
-torch_model.to(DEVICE)
-torch_model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+   
+
+    if os.path.exists(MODEL_FILE_PATH_TORCH):
+        torch_model.load_state_dict(
+            torch.load(MODEL_FILE_PATH_TORCH, map_location=device)
+        )
+    
+    torch_model.to(device)
+    torch_model.eval()
+    return torch_model, device
 
 # Keras Model Setup
 MODEL_FILE_PATH_KERAS = os.path.join(os.path.dirname(__file__), 'skin_model.h5')
