@@ -66,8 +66,12 @@ DISEASE_LOOKUP = {
 }
 
 # Torch Model Setup
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Torch Model Setup
 MODEL_FILE_PATH_TORCH = os.path.join(os.path.dirname(__file__), "skin_cancer_cnn.pth")
+
+def get_torch_device():
+    import torch
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 torch_model = SkinCancerCNN(num_classes=9)
 if os.path.exists(MODEL_FILE_PATH_TORCH):
