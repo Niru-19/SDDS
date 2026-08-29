@@ -502,7 +502,7 @@ def format_docs(docs):
 def initialize_rag_system():
     llm = ChatGroq(
         temperature=0,
-        GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+        groq_api_key=os.environ.get("GROQ_API_KEY", ""),
         model_name="llama-3.3-70b-versatile"
     )
     
