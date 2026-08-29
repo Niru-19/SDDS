@@ -1,10 +1,12 @@
 import os
 import io
 import json
-import numpy as np
-import torch
-import tensorflow as tf
-from PIL import Image
+def process_and_predict_image(image_bytes):
+
+ import numpy as np
+ import torch
+ import tensorflow as tf
+ from PIL import Image
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
