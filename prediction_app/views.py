@@ -1,8 +1,12 @@
 import os
 import io
 import json
-from PIL import Image
-import numpy as np
+def process_and_predict_image(image_bytes):
+
+ import numpy as np
+ import torch
+ import tensorflow as tf
+ from PIL import Image
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -13,6 +17,7 @@ from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from .ai_model import SkinCancerCNN
 from .forms import (
     DoctorLoginForm,
     DoctorRegistrationForm,
@@ -22,9 +27,28 @@ from .forms import (
 )
 from .models import DoctorProfile, PatientProfile, SkinPrediction
 
+# Modern LangChain & LCEL Imports
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
+
+# Updated Embeddings & VectorStore Imports
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain_community.embeddings import HuggingFaceBgeEmbeddings as HuggingFaceEmbeddings
+
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    from langchain_community.vectorstores import Chroma
+
 
 # ==========================================
-# LAZY ML & RAG LOADERS (PREVENTS OOM ON BOOT)
+# AI MODEL CONFIGURATION & INITIALIZATION
 # ==========================================
 
 CLASS_ORDER = ['AK', 'BCC', 'BKL', 'DF', 'MEL', 'NV', 'SCC', 'VASC']
@@ -41,119 +65,31 @@ DISEASE_LOOKUP = {
     "UNK": "Unknown Variant / Unclassified",
 }
 
-# Cache containers for lazy-loaded objects
-_KERAS_MODEL = None
-_RAG_CHAIN = None
-
-
-def get_keras_model():
-    """Lazy-load Keras model only when a prediction request arrives."""
-    global _KERAS_MODEL
-    if _KERAS_MODEL is None:
-        import tensorflow as tf
-        model_path = os.path.join(os.path.dirname(__file__), 'skin_model.h5')
-        if os.path.exists(model_path):
-            _KERAS_MODEL = tf.keras.models.load_model(model_path)
-    return _KERAS_MODEL
-
+# Torch Model Setup
+# Torch Model Setup
+# Model Path
+MODEL_FILE_PATH_TORCH = os.path.join(os.path.dirname(__file__), "skin_cancer_cnn.pth")
 
 def load_torch_model():
-    """Lazy-load PyTorch model on demand."""
     import torch
-    from .ai_model import SkinCancerCNN
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_path = os.path.join(os.path.dirname(__file__), "skin_cancer_cnn.pth")
-    
-    torch_model = SkinCancerCNN()
-    if os.path.exists(model_path):
+   
+
+    if os.path.exists(MODEL_FILE_PATH_TORCH):
         torch_model.load_state_dict(
-            torch.load(model_path, map_location=device)
+            torch.load(MODEL_FILE_PATH_TORCH, map_location=device)
         )
+    
     torch_model.to(device)
     torch_model.eval()
     return torch_model, device
 
-
-def get_rag_chain():
-    """Lazy-load LangChain/RAG pipeline only when a user sends a chat message."""
-    global _RAG_CHAIN
-    if _RAG_CHAIN is not None:
-        return _RAG_CHAIN
-
-    try:
-        from langchain_groq import ChatGroq
-        from langchain_core.prompts import ChatPromptTemplate
-        from langchain_core.output_parsers import StrOutputParser
-        from langchain_core.runnables import RunnablePassthrough
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
-
-        try:
-            from langchain_huggingface import HuggingFaceEmbeddings
-        except ImportError:
-            from langchain_community.embeddings import HuggingFaceBgeEmbeddings as HuggingFaceEmbeddings
-
-        try:
-            from langchain_chroma import Chroma
-        except ImportError:
-            from langchain_community.vectorstores import Chroma
-
-        data_dir = os.path.join(os.path.dirname(__file__), 'chatbot_data') 
-        db_path = os.path.join(os.path.dirname(__file__), 'chroma_db')
-
-        llm = ChatGroq(
-            temperature=0,
-            groq_api_key=os.environ.get("GROQ_API_KEY", ""),
-            model_name="llama-3.3-70b-versatile"
-        )
-        
-        embeddings = HuggingFaceEmbeddings(
-            model_name='BAAI/bge-small-en-v1.5', 
-            encode_kwargs={'normalize_embeddings': True}
-        )
-        
-        if not os.path.exists(db_path):
-            if not os.path.exists(data_dir):
-                os.makedirs(data_dir)
-                
-            loader = DirectoryLoader(data_dir, glob="**/*.pdf", loader_cls=PyPDFLoader, recursive=True)
-            documents = loader.load()
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-            texts = text_splitter.split_documents(documents)
-            
-            if texts:
-                vector_db = Chroma.from_documents(texts, embeddings, persist_directory=db_path)
-            else:
-                vector_db = Chroma(persist_directory=db_path, embedding_function=embeddings)
-        else:
-            vector_db = Chroma(persist_directory=db_path, embedding_function=embeddings)
-            
-        retriever = vector_db.as_retriever(search_kwargs={"k": 3})
-        
-        system_prompt = (
-            "You are a compassionate health chatbot. Respond thoughtfully to the following questions:\n\n"
-            "Context:\n{context}"
-        )
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", "{question}"),
-        ])
-        
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-
-        _RAG_CHAIN = (
-            {"context": retriever | format_docs, "question": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
-        return _RAG_CHAIN
-    except Exception as err:
-        print(f"❌ Failed to build RAG engine: {err}")
-        return None
+# Keras Model Setup
+MODEL_FILE_PATH_KERAS = os.path.join(os.path.dirname(__file__), 'skin_model.h5')
+keras_model = None
+if os.path.exists(MODEL_FILE_PATH_KERAS):
+    keras_model = tf.keras.models.load_model(MODEL_FILE_PATH_KERAS)
 
 
 # ==========================================
@@ -259,7 +195,6 @@ def predict_skin_view(request):
                 img_array = np.array(img, dtype=np.float32)  
                 img_tensor = np.expand_dims(img_array, axis=0)  
 
-            keras_model = get_keras_model()
             if keras_model:
                 predictions = keras_model.predict(img_tensor)
                 predicted_idx = np.argmax(predictions[0])
@@ -350,20 +285,24 @@ def doctor_patient_search(request):
     patient = None
 
     if search_query:
+        # 1. Search by Username (e.g., 'pat1')
         patient = PatientProfile.objects.filter(
             user__username__iexact=search_query
         ).first()
 
+        # 2. Search by Patient Profile ID if not found by username
         if not patient and search_query.isdigit():
             patient = PatientProfile.objects.filter(
                 id=int(search_query)
             ).first()
 
+        # 3. Search by Prediction Record ID if not found above
         if not patient and search_query.isdigit():
             scan = SkinPrediction.objects.filter(id=int(search_query)).first()
             if scan:
                 patient = scan.patient
 
+    # If no patient matches the search query
     if not patient:
         messages.error(
             request,
@@ -371,6 +310,7 @@ def doctor_patient_search(request):
         )
         return redirect("doctor_dashboard")
 
+    # Retrieve all scan history for this patient
     history = SkinPrediction.objects.filter(patient=patient).order_by("-prediction_date")
     latest_case = history.first()
 
@@ -381,8 +321,6 @@ def doctor_patient_search(request):
         "search_query": search_query,
     }
     return render(request, "doctor_dashboard.html", context)
-
-
 # ==========================================
 # 4. AUTHENTICATION VIEWS
 # ==========================================
@@ -564,8 +502,72 @@ def admin_delete_patient(request, pk):
 
 
 # ==========================================
-# 6. LANGCHAIN & RAG CHATBOT SYSTEM
+# 6. LANGCHAIN & RAG CHATBOT SYSTEM (LCEL)
 # ==========================================
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'chatbot_data') 
+DB_PATH = os.path.join(os.path.dirname(__file__), 'chroma_db')
+
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+def initialize_rag_system():
+    llm = ChatGroq(
+        temperature=0,
+        groq_api_key=os.environ.get("GROQ_API_KEY", ""),
+        model_name="llama-3.3-70b-versatile"
+    )
+    
+    embeddings = HuggingFaceEmbeddings(
+        model_name='BAAI/bge-small-en-v1.5', 
+        encode_kwargs={'normalize_embeddings': True}
+    )
+    
+    if not os.path.exists(DB_PATH):
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR)
+            
+        loader = DirectoryLoader(DATA_DIR, glob="**/*.pdf", loader_cls=PyPDFLoader, recursive=True)
+        documents = loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        texts = text_splitter.split_documents(documents)
+        
+        if texts:
+            vector_db = Chroma.from_documents(texts, embeddings, persist_directory=DB_PATH)
+        else:
+            vector_db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
+    else:
+        vector_db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
+        
+    retriever = vector_db.as_retriever(search_kwargs={"k": 3})
+    
+    system_prompt = (
+        "You are a compassionate health chatbot. Respond thoughtfully to the following questions:\n\n"
+        "Context:\n{context}"
+    )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{question}"),
+    ])
+    
+    # Modern LCEL RAG Chain Definition
+    rag_chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+    return rag_chain
+
+
+# Global initialization
+try:
+    GLOBAL_QA_CHAIN = initialize_rag_system()
+except Exception as sys_err:
+    print(f"❌ Failed to initialize RAG framework: {sys_err}")
+    GLOBAL_QA_CHAIN = None
+
 
 def mental_health_chat_page(request):
     return render(request, "mental_health_chat.html")
@@ -574,9 +576,8 @@ def mental_health_chat_page(request):
 @csrf_exempt
 def mental_health_chat_api(request):
     if request.method == "POST":
-        rag_chain = get_rag_chain()
-        if not rag_chain:
-            return JsonResponse({"error": "RAG pipeline engine failed to build on request."}, status=500)
+        if not GLOBAL_QA_CHAIN:
+            return JsonResponse({"error": "RAG pipeline engine failed to build on startup."}, status=500)
             
         try:
             data = json.loads(request.body)
@@ -585,7 +586,7 @@ def mental_health_chat_api(request):
             if not user_message:
                 return JsonResponse({"error": "Empty query string provided."}, status=400)
             
-            bot_reply = rag_chain.invoke(user_message).strip()
+            bot_reply = GLOBAL_QA_CHAIN.invoke(user_message).strip()
             
             if not bot_reply:
                 bot_reply = "I'm sorry, I couldn't formulate a proper response context."
